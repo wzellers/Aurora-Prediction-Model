@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pkl
+*.npy
+*.nc
+*.log
+
+# Environments
+venv/
+.env/
+
+# System
+.DS_Store
+
+# Streamlit
+.streamlit/config.toml
+
+# Misc
+.ipynb_checkpoints/

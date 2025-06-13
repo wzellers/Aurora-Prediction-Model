@@ -1,0 +1,15 @@
+microsoft-aurora
+cdsapi
+ecmwf-api-client
+numpy
+pandas
+scipy
+torch>=2.0.0
+xarray>=2022.06.0
+netCDF4
+tqdm
+matplotlib
+streamlit
+streamlit-folium
+folium
+huggingface_hub
