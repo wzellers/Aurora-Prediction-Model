@@ -7,11 +7,6 @@ from aurora.model import Aurora
 from aurora.rollout import rollout
 from build_batch import build_batch
 from utils.padding import pad_to_patch_size
-import random
-
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
 
 # Build model and batch
 @st.cache_resource

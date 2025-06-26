@@ -4,12 +4,7 @@ from aurora.model import Aurora
 from aurora.rollout import rollout
 from build_batch import build_batch
 from utils.padding import pad_to_patch_size
-import random
 from aurora import AuroraSmallPretrained
-
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
 
 model = AuroraSmallPretrained()
 model.load_checkpoint()
@@ -26,7 +21,7 @@ for k in batch.atmos_vars:
 
 # Only use the first time step for rollout
 for k in batch.atmos_vars:
-    batch.atmos_vars[k] = batch.atmos_vars[k][:, :1]  # shape (1, 1, C, H, W)
+    batch.atmos_vars[k] = batch.atmos_vars[k][:, :1, :, :, :]  # Keep all vertical levels (C)
 
 # Extract raw lat/lon from batch and build sorted coordinate arrays
 # Define sorted coordinate arrays (lat: decreasing, lon: increasing)
@@ -85,6 +80,11 @@ with torch.no_grad():
             "atmos": p.atmos_vars,
         }
 
+print("Atmospheric keys at step 1:", preds_by_step[1]["atmos"].keys())
+print("q shape:", preds_by_step[1]["atmos"]["q"].shape)
+print("q max value:", preds_by_step[1]["atmos"]["q"].max())
+print("q min value:", preds_by_step[1]["atmos"]["q"].min())
+
 # Helper: find closest index
 def find_closest_idx(array, value):
     return int(np.abs(array - value).argmin())
@@ -103,7 +103,33 @@ if preds_by_step:
             print(f"  {var}: {val:.2f}")
         print("Atmospheric:")
         for var in ["t", "u", "v", "q", "z"]:
-            val = preds_by_step[chosen_step]["atmos"][var][0, 0, 0, lat_idx, lon_idx].item()
+            if var == "q":
+                val = preds_by_step[chosen_step]["atmos"][var][0, 0, :, lat_idx, lon_idx].mean().item()
+                val *= 1000
+            else:
+                val = preds_by_step[chosen_step]["atmos"][var][0, 0, 0, lat_idx, lon_idx].item()
             print(f"  {var}: {val:.2f}")
 else:
     print("No predictions were generated.")
+
+def get_prediction_grid(variable_name):
+    """
+    Return the full 2D grid for a predicted variable at step 1.
+    """
+    if not preds_by_step:
+        raise RuntimeError("No predictions available.")
+
+    chosen_step = max(preds_by_step.keys())  # usually step 1
+    surf_vars = preds_by_step[chosen_step]["surf"]
+    atmos_vars = preds_by_step[chosen_step]["atmos"]
+
+    if variable_name in surf_vars:
+        grid = surf_vars[variable_name][0, 0]  # shape: (lat, lon)
+    elif variable_name == "q":
+        grid = atmos_vars["q"][0, 0].mean(dim=0) * 1000 # average across levels
+    elif variable_name in atmos_vars:
+        grid = atmos_vars[variable_name][0, 0, 0]
+    else:
+        raise ValueError(f"Variable {variable_name} not found in predictions.")
+
+    return grid.cpu().numpy()
